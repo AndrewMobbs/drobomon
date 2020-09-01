@@ -21,6 +21,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -74,12 +75,24 @@ func (m *Monitor) updateStatus() error {
 	m.LastFetchTime = time.Now()
 	conn, err := net.Dial("tcp", drobo+":5000")
 	if err != nil {
+		log.Println("Dialling error" + err.Error())
 		m.LastFetchError = err
 		return err
 	}
 	defer conn.Close()
 	buf := make([]byte, 0, 16384)
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	buf, err = ioutil.ReadAll(conn)
+	if err != nil {
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			// time out -- this is OK
+			err = nil
+		} else {
+			log.Println("read error:", err)
+			// some error else, do something else, for example create new conn
+		}
+	}
+
 	if err == nil {
 		i := bytes.Index(buf, []byte("<?xml"))
 		if i >= 0 {
