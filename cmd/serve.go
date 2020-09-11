@@ -43,6 +43,7 @@ type Slot struct {
 	PhyCapacity int64    `xml:"mPhysicalCapacity"`
 	RotSpeed    int      `xml:"RotationalSpeed"`
 }
+
 // Status holds the status structure of a Drobo NAS
 type Status struct {
 	Serial        string `xml:"mSerial"`
@@ -68,6 +69,7 @@ type Monitor struct {
 }
 
 var m = new(Monitor)
+
 const refetchTime = 10
 const nasdPort = "5000"
 const bufSize = 16384
@@ -153,7 +155,7 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{ \"status\" : \"warn\"}"))
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
-		resp=fmt.Sprintf("{ \"status\" : \"fail\",\"code\":\"%d\"}",m.LastGoodStatus.Status)
+		resp := fmt.Sprintf("{ \"status\" : \"fail\",\"code\":\"%d\"}", m.LastGoodStatus.Status)
 		w.Write([]byte(resp))
 	}
 	return
