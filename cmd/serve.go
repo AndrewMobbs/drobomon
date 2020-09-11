@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Slot hold data about a single drive slot in a Drobo NAS
 type Slot struct {
 	XMLName     xml.Name `xml:,any`
 	SlotNumber  int      `xml:"mSlotNumber"`
@@ -42,7 +43,7 @@ type Slot struct {
 	PhyCapacity int64    `xml:"mPhysicalCapacity"`
 	RotSpeed    int      `xml:"RotationalSpeed"`
 }
-
+// Status holds the status structure of a Drobo NAS
 type Status struct {
 	Serial        string `xml:"mSerial"`
 	Name          string `xml:"mName"`
@@ -57,6 +58,7 @@ type Status struct {
 	} `xml:"mSlotsExp"`
 }
 
+// Monitor holds overall state of the drobomon server process
 type Monitor struct {
 	HaveGoodStatus    bool
 	LastGoodFetchTime time.Time
@@ -66,21 +68,24 @@ type Monitor struct {
 }
 
 var m = new(Monitor)
+const refetchTime = 10
+const nasdPort = "5000"
+const bufSize = 16384
 
 // updateStatus gets the current status from the Drobo NASD status port
 func (m *Monitor) updateStatus() error {
-	if time.Since(m.LastFetchTime).Seconds() < 10 {
+	if time.Since(m.LastFetchTime).Seconds() < refetchTime {
 		return m.LastFetchError
 	}
 	m.LastFetchTime = time.Now()
-	conn, err := net.Dial("tcp", drobo+":5000")
+	conn, err := net.Dial("tcp", drobo+":"+nasdPort)
 	if err != nil {
 		log.Println("Dialling error" + err.Error())
 		m.LastFetchError = err
 		return err
 	}
 	defer conn.Close()
-	buf := make([]byte, 0, 16384)
+	buf := make([]byte, 0, bufSize)
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	buf, err = ioutil.ReadAll(conn)
 	if err != nil {
@@ -148,7 +153,8 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{ \"status\" : \"warn\"}"))
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("{ \"status\" : \"fail\",\"notes\":\"Could not get status\"}"))
+		resp=fmt.Sprintf("{ \"status\" : \"fail\",\"code\":\"%d\"}",m.LastGoodStatus.Status)
+		w.Write([]byte(resp))
 	}
 	return
 }
